@@ -29,8 +29,8 @@ from pre_training.utils import (
 from pre_training.dataset import Dataset
 
 # Assuming being run on a SLURM system (remove "if" if not the case)
-if int(os.environ["SLURM_PROCID"]) == 0:
-    import wandb
+#if int(os.environ["SLURM_PROCID"]) == 0:
+#    import wandb
 
 
 def parse_arguments():
@@ -558,9 +558,10 @@ if __name__ == "__main__":
         args = argparse.Namespace(**args)
     else:
         checkpoint, initial_epoch, global_step = None, 0, 0
-        args.wandb_id = (
-            wandb.util.generate_id() if int(os.environ["SLURM_PROCID"]) == 0 else 0
-        )
+        args.wandb_id =0 
+        #''' (
+        #    wandb.util.generate_id() if int(os.environ["SLURM_PROCID"]) == 0 else 0
+        #)'''
 
     tokenizer = Tokenizer.from_file(args.vocab_path)
     device, local_rank = setup_training(args)

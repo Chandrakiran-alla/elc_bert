@@ -13,6 +13,8 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from torch.nn.parallel import DistributedDataParallel
 
+
+import wandb
 from tokenizers import Tokenizer
 from pre_training.lamb import Lamb
 from pre_training.config import BertConfig
@@ -29,8 +31,8 @@ from pre_training.utils import (
 from pre_training.dataset import Dataset
 
 # Assuming being run on a SLURM system (remove "if" if not the case)
-if int(os.environ["SLURM_PROCID"]) == 0:
-    import wandb
+#if int(os.environ["SLURM_PROCID"]) == 0:
+#import wandb
 
 
 def parse_arguments():
@@ -39,26 +41,26 @@ def parse_arguments():
     # Required parameters
     parser.add_argument(
         "--input_path",
-        default="../data/processed/cached_{sequence_length}.txt",
+        default="data/processed/cached_{sequence_length}.txt",
         type=str,
         help="The input data dir. Should be the cached text file.",
     )
     parser.add_argument(
         "--config_file",
-        default="../configs/base.json",
+        default="configs/base.json",
         type=str,
         help="The BERT model config",
     )
     parser.add_argument(
         "--output_dir",
-        default="../checkpoints/elc_bert_zero",
+        default="checkpoints/elc_bert_zero",
         type=str,
         help="The output directory where the model checkpoints \
             will be written.",
     )
     parser.add_argument(
         "--vocab_path",
-        default="../tokenizer.json",
+        default="tokenizers/tokenizer.json",
         type=str,
         help="The vocabulary the BERT model will train on.",
     )
@@ -210,9 +212,9 @@ def setup_training(args):
     assert torch.cuda.is_available()
     args.n_gpu = torch.cuda.device_count()
 
-    world_size = int(os.environ["WORLD_SIZE"])
-    rank = int(os.environ["SLURM_PROCID"])
-    gpus_per_node = int(os.environ["SLURM_GPUS_ON_NODE"])
+    world_size = 1 # int(os.environ["WORLD_SIZE"])
+    rank = 0 #int(os.environ["SLURM_PROCID"])
+    gpus_per_node = 1 #int(os.environ["SLURM_GPUS_ON_NODE"])
     assert gpus_per_node == torch.cuda.device_count()
     print(
         f"Hello from rank {rank} of {world_size} on {gethostname()} where \
@@ -499,11 +501,7 @@ def save(model, optimizer, grad_scaler, scheduler, global_step, epoch, args):
 
 
 def load_dataset(args, tokenizer, device):
-    seq_length = (
-        args.seq_length * 4
-        if global_step >= int(args.device_max_steps * args.long_after)
-        else args.seq_length
-    )
+    seq_length = 128
     train_data = Dataset(
         args.input_path.format(sequence_length=seq_length),
         get_rank(),
@@ -561,9 +559,10 @@ if __name__ == "__main__":
         args = argparse.Namespace(**args)
     else:
         checkpoint, initial_epoch, global_step = None, 0, 0
-        args.wandb_id = (
-            wandb.util.generate_id() if int(os.environ["SLURM_PROCID"]) == 0 else 0
-        )
+        args.wandb_id = wandb.util.generate_id()
+        #(
+        #    wandb.util.generate_id() if int(os.environ["SLURM_PROCID"]) == 0 else 0
+        #)
 
     tokenizer = Tokenizer.from_file(args.vocab_path)
     device, local_rank = setup_training(args)
